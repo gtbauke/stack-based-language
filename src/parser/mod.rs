@@ -3,7 +3,7 @@ use crate::{
     token::{Token, TokenKind},
 };
 
-use self::ast::AstNode;
+use self::ast::{AstNode, Block};
 
 pub mod ast;
 
@@ -55,6 +55,97 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn consume(&mut self, expected: TokenKind) -> Option<Token> {
+        if self
+            .current
+            .as_ref()
+            .map_or(false, |token| token.kind == expected)
+        {
+            self.advance();
+            self.previous.clone()
+        } else {
+            None
+        }
+    }
+
+    fn consume_any_of(&mut self, kinds: Vec<TokenKind>) -> Option<Token> {
+        if self
+            .current
+            .as_ref()
+            .map_or(false, |token| kinds.contains(&token.kind))
+        {
+            self.advance();
+            self.previous.clone()
+        } else {
+            None
+        }
+    }
+
+    fn parse_if_expression(&mut self) -> AstNode {
+        let location = self.current.as_ref().unwrap().location.clone();
+        self.advance();
+
+        let mut then_branch = Vec::<AstNode>::new();
+        let mut else_branch = Vec::<AstNode>::new();
+
+        loop {
+            match self.current.as_ref() {
+                None => {
+                    panic!("Unexpected end of file");
+                }
+                Some(token) => match token.kind {
+                    TokenKind::End => break,
+                    TokenKind::Else => break,
+                    _ => {
+                        then_branch.push(self.parse_expression());
+                        self.advance();
+                    }
+                },
+            }
+        }
+
+        let token = self.consume_any_of(vec![TokenKind::End, TokenKind::Else]);
+
+        match token {
+            None => panic!("Unexpected end of file"),
+            Some(token) => match token.kind {
+                TokenKind::Else => {
+                    loop {
+                        let token = self.current.as_ref();
+
+                        match token {
+                            None => {
+                                panic!("Unexpected end of file");
+                            }
+                            Some(token) => match token.kind {
+                                TokenKind::End => break,
+                                _ => {
+                                    else_branch.push(self.parse_expression());
+                                    self.advance();
+                                }
+                            },
+                        }
+                    }
+
+                    self.consume(TokenKind::End);
+                }
+                _ => {}
+            },
+        }
+
+        let location = location.combine(&self.previous.as_ref().unwrap().location);
+
+        AstNode::IfExpression {
+            location,
+            then_branch: Block { nodes: then_branch },
+            else_branch: if else_branch.len() > 0 {
+                Some(Block { nodes: else_branch })
+            } else {
+                None
+            },
+        }
+    }
+
     fn parse_expression(&mut self) -> AstNode {
         match self.current.as_ref() {
             Some(token) => {
@@ -94,6 +185,7 @@ impl<'a> Parser<'a> {
                             },
                         }
                     }
+                    TokenKind::If => self.parse_if_expression(),
                     _ => todo!("parse_expression not implemented for {:?} yet", token),
                 }
             }

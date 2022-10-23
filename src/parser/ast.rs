@@ -2,7 +2,7 @@ use crate::token::location::Location;
 
 #[derive(Debug, Clone)]
 pub struct Block {
-    nodes: Vec<AstNode>,
+    pub nodes: Vec<AstNode>,
 }
 
 #[derive(Debug, Clone)]
