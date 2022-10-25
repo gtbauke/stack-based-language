@@ -12,8 +12,13 @@ Header:
 2 bytes -> Magic Number
 1 byte -> Version
 1 byte -> Block Count // TODO: maybe we should use 2 bytes for this
-1 byte -> Entry Point
+1 byte -> Entry Point (Header Size + Block Entry Point)
 
+Strings:
+1 byte -> String Length
+n bytes -> String
+
+Blocks:
 n bytes -> Blocks
 
 Block:
@@ -47,9 +52,14 @@ impl Program {
         self.blocks.len() - 1
     }
 
-    pub fn add_string(&mut self, string: String) -> usize {
-        self.strings.push(string);
-        self.strings.len() - 1
+    pub fn internalize_string(&mut self, string: &str) -> usize {
+        match self.strings.iter().position(|s| s == string) {
+            Some(id) => id,
+            None => {
+                self.strings.push(string.to_string());
+                self.strings.len() - 1
+            }
+        }
     }
 
     pub fn get_mut_block(&self, block_id: usize) -> RefMut<Block> {
@@ -62,8 +72,15 @@ impl Program {
         bytes.extend_from_slice(&MAGIC_NUMBER.to_le_bytes());
         bytes.push(0x01); // Version
 
+        let string_block_size = self.strings.iter().fold(0, |acc, s| acc + s.len() + 1);
+
         bytes.push(self.blocks.len() as u8);
-        bytes.push(self.entry_point as u8);
+        bytes.push(string_block_size as u8 + self.entry_point as u8);
+
+        for string in &self.strings {
+            bytes.push(string.len() as u8);
+            bytes.extend_from_slice(string.as_bytes());
+        }
 
         for block in self.blocks.iter() {
             bytes.extend_from_slice(&block.as_ref().borrow().to_bytes());

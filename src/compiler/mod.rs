@@ -42,6 +42,12 @@ impl Compiler {
             AstNode::BooleanLiteral(b, _) => self
                 .get_current_block(current_block_id)
                 .add_instruction(Instruction::LoadBool(*b)),
+            AstNode::StringLiteral(s, _) => {
+                let string_id = self.program.internalize_string(&s);
+
+                self.get_current_block(current_block_id)
+                    .add_instruction(Instruction::LoadStr(string_id))
+            }
             _ => todo!("compile_node is not implemented for {:?} yet", node),
         }
 

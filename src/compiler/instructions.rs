@@ -15,7 +15,7 @@ pub enum Instruction {
 
     LoadI64(i64),
     LoadF64(f64),
-    LoadStr(String),
+    LoadStr(usize),
     LoadBool(bool),
     LoadConstant(usize),
 
@@ -44,6 +44,11 @@ impl Instruction {
             Instruction::LoadBool(b) => {
                 let mut bytes = vec![0x04, 0x01, 0x01, 0x00];
                 bytes.extend_from_slice(&[*b as u8]);
+                bytes
+            }
+            Instruction::LoadStr(id) => {
+                let mut bytes = vec![0x05, 0x04, 0x01, 0x00];
+                bytes.extend_from_slice(&id.to_le_bytes());
                 bytes
             }
             _ => todo!("to_bytes is not implemented for {:?} yet", self),
