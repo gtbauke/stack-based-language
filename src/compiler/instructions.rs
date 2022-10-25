@@ -28,26 +28,45 @@ pub enum Instruction {
 }
 
 impl Instruction {
+    pub fn instruction_bytes(&self) -> &[u8; 4] {
+        match self {
+            Instruction::NoOp => &[0x00, 0x00, 0x00, 0x00],
+            Instruction::LoadI64(_) => &[0x01, 0x00, 0x00, 0x00],
+            Instruction::LoadF64(_) => &[0x02, 0x00, 0x00, 0x00],
+            Instruction::LoadStr(_) => &[0x03, 0x00, 0x00, 0x00],
+            Instruction::LoadBool(_) => &[0x04, 0x00, 0x00, 0x00],
+            Instruction::LoadConstant(_) => &[0x05, 0x00, 0x00, 0x00],
+
+            Instruction::Get(_) => &[0x06, 0x00, 0x00, 0x00],
+            Instruction::Call(_) => &[0x07, 0x00, 0x00, 0x00],
+
+            Instruction::Jump(_) => &[0x08, 0x00, 0x00, 0x00],
+            Instruction::JumpIfFalse(_) => &[0x09, 0x00, 0x00, 0x00],
+            Instruction::JumpIfTrue(_) => &[0x0A, 0x00, 0x00, 0x00],
+            _ => todo!(),
+        }
+    }
+
     pub fn to_bytes(&self) -> Vec<u8> {
         match self {
-            Instruction::NoOp => vec![0x00, 0x00, 0x00, 0x00],
+            Instruction::NoOp => self.instruction_bytes().to_vec(),
             Instruction::LoadI64(i) => {
-                let mut bytes = vec![0x01, 0x08, 0x01, 0x00];
+                let mut bytes = self.instruction_bytes().to_vec();
                 bytes.extend_from_slice(&i.to_le_bytes());
                 bytes
             }
             Instruction::LoadF64(f) => {
-                let mut bytes = vec![0x02, 0x08, 0x01, 0x00];
+                let mut bytes = self.instruction_bytes().to_vec();
                 bytes.extend_from_slice(&f.to_le_bytes());
                 bytes
             }
             Instruction::LoadBool(b) => {
-                let mut bytes = vec![0x04, 0x01, 0x01, 0x00];
+                let mut bytes = self.instruction_bytes().to_vec();
                 bytes.extend_from_slice(&[*b as u8]);
                 bytes
             }
             Instruction::LoadStr(id) => {
-                let mut bytes = vec![0x05, 0x04, 0x01, 0x00];
+                let mut bytes = self.instruction_bytes().to_vec();
                 bytes.extend_from_slice(&id.to_le_bytes());
                 bytes
             }

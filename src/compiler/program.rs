@@ -52,7 +52,7 @@ impl Program {
         self.blocks.len() - 1
     }
 
-    pub fn internalize_string(&mut self, string: &str) -> usize {
+    pub fn add_string(&mut self, string: &str) -> usize {
         match self.strings.iter().position(|s| s == string) {
             Some(id) => id,
             None => {
