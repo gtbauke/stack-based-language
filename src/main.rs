@@ -3,14 +3,10 @@ mod lexer;
 mod parser;
 mod token;
 
+use compiler::Compiler;
 use lexer::Lexer;
 use parser::Parser;
-use std::env;
-use std::fs;
-use std::fs::File;
-use std::io::Write;
-
-use crate::compiler::Compiler;
+use std::{env, fs};
 
 fn main() {
     let args = env::args().skip(1).collect::<Vec<String>>();
@@ -25,21 +21,9 @@ fn main() {
     let mut parser = Parser::new(&mut lexer);
 
     let ast = parser.parse();
+    let mut compiler = Compiler::new();
 
-    println!("{:#?}", &ast);
+    let program = compiler.compile(ast).expect("Unable to compile program");
 
-    let mut compiler = Compiler::new(ast);
-    let program = match compiler.compile() {
-        Ok(program) => program,
-        Err(e) => {
-            println!("Compiler error: {:?}", e);
-            return;
-        }
-    };
-
-    println!("{:#?}", &program);
-
-    let mut file = File::create("out.sb").expect("Unable to create file");
-    file.write_all(&program.to_bytes())
-        .expect("Unable to write file");
+    println!("{:#?}", program);
 }

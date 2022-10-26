@@ -1,64 +1,65 @@
-use std::cell::RefMut;
-
 use crate::parser::ast::AstNode;
 
-use self::{block::Block, error::CompilerError, instructions::Instruction, program::Program};
+use self::{error::CompilerError, instruction::Instruction, program::Program};
 
-pub mod block;
-pub mod error;
-pub mod instructions;
+pub mod instruction;
 pub mod program;
 
-#[derive(Debug)]
+mod error;
+
+#[derive(Debug, Clone)]
 pub struct Compiler {
-    ast: Vec<AstNode>,
     program: Program,
 }
 
 impl Compiler {
-    pub fn new(ast: Vec<AstNode>) -> Self {
-        Self {
-            ast,
+    pub fn new() -> Self {
+        Compiler {
             program: Program::new(),
         }
     }
 
-    fn get_current_block(&self, id: usize) -> RefMut<Block> {
-        self.program.get_mut_block(id)
-    }
-
-    fn compile_node(
-        &mut self,
-        node: &AstNode,
-        current_block_id: usize,
-    ) -> Result<(), CompilerError> {
+    fn compile_node(&mut self, node: &AstNode) -> Result<(), CompilerError> {
         match node {
-            AstNode::IntegerLiteral(i, _) => self
-                .get_current_block(current_block_id)
-                .add_instruction(Instruction::LoadI64(*i)),
-            AstNode::FloatLiteral(f, _) => self
-                .get_current_block(current_block_id)
-                .add_instruction(Instruction::LoadF64(*f)),
-            AstNode::BooleanLiteral(b, _) => self
-                .get_current_block(current_block_id)
-                .add_instruction(Instruction::LoadBool(*b)),
-            AstNode::StringLiteral(s, _) => {
-                let string_id = self.program.add_string(&s);
-
-                self.get_current_block(current_block_id)
-                    .add_instruction(Instruction::LoadStr(string_id))
+            AstNode::IntegerLiteral(i, _) => self.program.add_instruction(Instruction::LoadI64(*i)),
+            AstNode::FloatLiteral(f, _) => self.program.add_instruction(Instruction::LoadF64(*f)),
+            AstNode::BooleanLiteral(b, _) => {
+                self.program.add_instruction(Instruction::LoadBool(*b))
             }
+            AstNode::StringLiteral(s, _) => {
+                let index = self.program.add_string(s);
+
+                self.program
+                    .add_instruction(Instruction::LoadConstant(index));
+            }
+            AstNode::FunctionCall { name, .. } => match name.as_str() {
+                "__plus" => self.program.add_instruction(Instruction::Add),
+                "__minus" => self.program.add_instruction(Instruction::Sub),
+                "__mult" => self.program.add_instruction(Instruction::Mul),
+                "__div" => self.program.add_instruction(Instruction::Div),
+                "__not" => self.program.add_instruction(Instruction::Not),
+                "__gt" => self.program.add_instruction(Instruction::GreaterThan),
+                "__gte" => self.program.add_instruction(Instruction::GreaterThanEquals),
+                "__lt" => self.program.add_instruction(Instruction::LessThan),
+                "__lte" => self.program.add_instruction(Instruction::LessThanEquals),
+                "__and" => self.program.add_instruction(Instruction::And),
+                "__or" => self.program.add_instruction(Instruction::Or),
+                "__eqeq" => self.program.add_instruction(Instruction::Equals),
+                "__noteq" => self.program.add_instruction(Instruction::NotEquals),
+                _ => todo!(
+                    "compile_node::AstNode::FunctionCall is not implemented for {} yet",
+                    name
+                ),
+            },
             _ => todo!("compile_node is not implemented for {:?} yet", node),
         }
 
         Ok(())
     }
 
-    pub fn compile(&mut self) -> Result<Program, CompilerError> {
-        let current_block_id = self.program.add_block();
-
-        for node in self.ast.clone() {
-            self.compile_node(&node, current_block_id)?;
+    pub fn compile(&mut self, ast: Vec<AstNode>) -> Result<Program, CompilerError> {
+        for node in &ast {
+            self.compile_node(node)?;
         }
 
         Ok(self.program.clone())
