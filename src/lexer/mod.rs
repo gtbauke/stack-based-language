@@ -193,6 +193,7 @@ impl Lexer {
                         self.advance();
                         self.new_token(TokenKind::Arrow)
                     }
+                    Some(c) if c.is_ascii_digit() => self.handle_numbers(),
                     _ => self.new_token(TokenKind::Minus),
                 },
                 b'*' => self.new_token(TokenKind::Star),
