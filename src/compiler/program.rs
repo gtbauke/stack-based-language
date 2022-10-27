@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use super::instruction::Instruction;
+use super::{block::Block, instruction::Instruction};
 
 #[derive(Debug, Clone)]
 pub struct Program {
-    pub instructions: Vec<Instruction>,
+    pub blocks: Vec<Block>,
     pub entry_point: usize,
 
     pub strings: Vec<String>,
@@ -14,7 +14,7 @@ pub struct Program {
 impl Program {
     pub fn new() -> Self {
         Program {
-            instructions: Vec::new(),
+            blocks: Vec::new(),
             entry_point: 0,
 
             strings: Vec::new(),
@@ -22,8 +22,13 @@ impl Program {
         }
     }
 
-    pub fn add_instruction(&mut self, instruction: Instruction) {
-        self.instructions.push(instruction);
+    pub fn add_block(&mut self) -> usize {
+        self.blocks.push(Block::new());
+        self.blocks.len() - 1
+    }
+
+    pub fn add_instruction_at(&mut self, block_id: usize, instruction: Instruction) {
+        self.blocks[block_id].add_instruction(instruction);
     }
 
     pub fn set_entry_point(&mut self, entry_point: usize) {
@@ -40,7 +45,7 @@ impl Program {
         }
     }
 
-    pub fn add_function(&mut self, name: &str, entry_point: usize) {
-        self.functions.insert(name.to_string(), entry_point);
+    pub fn add_function(&mut self, name: &str, block_id: usize) {
+        self.functions.insert(name.to_string(), block_id);
     }
 }

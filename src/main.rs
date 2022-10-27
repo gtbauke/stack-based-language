@@ -24,10 +24,9 @@ fn main() {
     let tokens = lexer.lex();
 
     let mut parser = Parser::new(tokens);
-
     let ast = parser.parse();
-    let mut compiler = Compiler::new();
 
+    let mut compiler = Compiler::new();
     let program = compiler.compile(ast).expect("Unable to compile program");
 
     let mut interpreter = Interpreter::new(program.clone());

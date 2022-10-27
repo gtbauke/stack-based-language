@@ -12,29 +12,37 @@ pub mod value;
 pub struct Interpreter {
     stack: Vec<Value>,
     program: Program,
+    bp: usize,
     ip: usize,
-    rp: usize,
+
+    brp: usize,
+    irp: usize,
 }
 
 impl Interpreter {
     pub fn new(program: Program) -> Self {
-        let ip = &program.functions.get("main").map_or(0, |i| *i);
+        let bp = &program.functions.get("main").map_or(0, |i| *i);
 
         Self {
             stack: Vec::new(),
             program,
-            ip: *ip,
-            rp: 0,
+            bp: *bp,
+            ip: 0,
+
+            brp: 0,
+            irp: 0,
         }
     }
 
     fn current_instruction(&self) -> &Instruction {
-        &self.program.instructions[self.ip]
+        &self.program.blocks[self.bp].instructions[self.ip]
     }
 
     pub fn interpret(&mut self) -> Result<Value, RuntimeError> {
         loop {
-            if self.ip >= self.program.instructions.len() {
+            if self.bp >= self.program.blocks.len()
+                || self.ip >= self.program.blocks[self.bp].instructions.len()
+            {
                 break;
             }
 
@@ -93,11 +101,15 @@ impl Interpreter {
                     self.ip += 1;
                 }
                 Instruction::Call(index) => {
-                    self.rp = self.ip + 1;
-                    self.ip = index;
+                    self.brp = self.bp;
+                    self.irp = self.ip + 1;
+
+                    self.bp = index;
+                    self.ip = 0;
                 }
                 Instruction::Return => {
-                    self.ip = self.rp;
+                    self.bp = self.brp;
+                    self.ip = self.irp;
                 }
                 _ => todo!("Instruction not implemented: {:?}", instruction),
             }
