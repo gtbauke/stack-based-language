@@ -1,3 +1,3 @@
-4
--5
-+
+fun main in
+  4 5 +
+end

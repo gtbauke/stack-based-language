@@ -25,8 +25,7 @@ pub enum AstNode {
     },
 
     FunctionDeclaration {
-        name: Box<AstNode>,
-        argument_types: Vec<AstNode>,
+        name: String,
         body: Block,
         location: Location,
     },

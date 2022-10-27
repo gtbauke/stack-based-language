@@ -68,6 +68,19 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn consume_identifier(&mut self) -> Option<String> {
+        if let Some(Token {
+            kind: TokenKind::Identifier(name),
+            ..
+        }) = self.current.clone()
+        {
+            self.advance();
+            Some(name)
+        } else {
+            None
+        }
+    }
+
     fn consume_any_of(&mut self, kinds: Vec<TokenKind>) -> Option<Token> {
         if self
             .current
@@ -78,6 +91,52 @@ impl<'a> Parser<'a> {
             self.previous.clone()
         } else {
             None
+        }
+    }
+
+    fn parse_block(&mut self) -> Block {
+        let mut nodes = Vec::new();
+
+        loop {
+            match self.current.as_ref() {
+                None => panic!("Unexpected end of file"),
+                Some(token) => match token.kind {
+                    TokenKind::End => break,
+                    _ => {
+                        nodes.push(self.parse_expression());
+                        self.advance();
+                    }
+                },
+            }
+        }
+
+        self.consume(TokenKind::End);
+
+        Block { nodes }
+    }
+
+    fn parse_function_definition(&mut self) -> AstNode {
+        let location = self.current.as_ref().unwrap().location.clone();
+        self.advance();
+
+        let name = match self.consume_identifier() {
+            Some(name) => name,
+            None => {
+                // TODO: error handling
+                panic!("Expected identifier after 'def' keyword");
+            }
+        };
+
+        self.consume(TokenKind::In);
+
+        let body = self.parse_block();
+        let location =
+            location.combine(body.nodes.last().map_or(&location, |node| node.location()));
+
+        AstNode::FunctionDeclaration {
+            name,
+            body,
+            location,
         }
     }
 
@@ -186,6 +245,7 @@ impl<'a> Parser<'a> {
                         }
                     }
                     TokenKind::If => self.parse_if_expression(),
+                    TokenKind::Fun => self.parse_function_definition(),
                     _ => todo!("parse_expression not implemented for {:?} yet", token),
                 }
             }
