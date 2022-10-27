@@ -1,6 +1,6 @@
 use crate::parser::ast::AstNode;
 
-use self::{error::CompilerError, instruction::Instruction, program::Program};
+use self::{block::Block, error::CompilerError, instruction::Instruction, program::Program};
 
 pub mod block;
 pub mod instruction;
@@ -23,6 +23,10 @@ impl Compiler {
             program: resolved_program,
             current_block: 0,
         }
+    }
+
+    fn current_block(&mut self) -> &mut Block {
+        &mut self.program.blocks[self.current_block]
     }
 
     fn compile_node(&mut self, node: &AstNode) -> Result<(), CompilerError> {
@@ -55,6 +59,9 @@ impl Compiler {
                 "__div" => self
                     .program
                     .add_instruction_at(self.current_block, Instruction::Div),
+                "__mod" => self
+                    .program
+                    .add_instruction_at(self.current_block, Instruction::Mod),
                 "__not" => self
                     .program
                     .add_instruction_at(self.current_block, Instruction::Not),
@@ -82,6 +89,9 @@ impl Compiler {
                 "__noteq" => self
                     .program
                     .add_instruction_at(self.current_block, Instruction::NotEquals),
+                "()__quit" => self
+                    .program
+                    .add_instruction_at(self.current_block, Instruction::Halt),
                 _ => {
                     let index = match self.program.functions.get(name) {
                         Some(i) => *i,
@@ -115,6 +125,41 @@ impl Compiler {
                     .add_instruction_at(self.current_block, instruction);
 
                 self.current_block = old_block;
+            }
+            AstNode::IfExpression {
+                then_branch,
+                else_branch,
+                ..
+            } => {
+                // let then_block_entry = self.current_block().instructions.len();
+                let instruction_to_patch = self.current_block().add_instruction(Instruction::Patch);
+
+                for node in &then_branch.nodes {
+                    self.compile_node(node)?;
+                }
+
+                let end_then_branch_instruction =
+                    self.current_block().add_instruction(Instruction::Patch);
+
+                let else_block_entry = self.current_block().instructions.len();
+
+                match else_branch {
+                    None => {}
+                    Some(else_branch) => {
+                        for node in &else_branch.nodes {
+                            self.compile_node(node)?;
+                        }
+                    }
+                }
+
+                self.current_block().patch_instruction(
+                    instruction_to_patch,
+                    Instruction::JumpIfFalse(else_block_entry),
+                );
+
+                let index = self.current_block().instructions.len();
+                self.current_block()
+                    .patch_instruction(end_then_branch_instruction, Instruction::Jump(index));
             }
             _ => todo!("compile_node is not implemented for {:?} yet", node),
         }

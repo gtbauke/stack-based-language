@@ -18,7 +18,7 @@ impl Parser {
     }
 
     fn is_at_end(&self) -> bool {
-        self.tokens[self.current].kind == TokenKind::EOF
+        self.current >= self.tokens.len() || self.tokens[self.current].kind == TokenKind::EOF
     }
 
     fn advance(&mut self) -> Option<&Token> {
@@ -37,7 +37,7 @@ impl Parser {
             TokenKind::Minus => Some("__minus".to_string()),
             TokenKind::Star => Some("__mult".to_string()),
             TokenKind::Slash => Some("__div".to_string()),
-            TokenKind::Equal => Some("__eq".to_string()),
+            TokenKind::Percent => Some("__mod".to_string()),
             TokenKind::Bang | TokenKind::Not => Some("__not".to_string()),
             TokenKind::Greater => Some("__gt".to_string()),
             TokenKind::GreaterEqual => Some("__gte".to_string()),
@@ -95,7 +95,10 @@ impl Parser {
             let token = self.peek(0);
 
             match token {
-                None => panic!("Unexpected end of file"),
+                None => {
+                    println!("Unexpected end of file");
+                    break;
+                }
                 Some(token) => match token.kind {
                     TokenKind::End => break,
                     _ => {
@@ -262,6 +265,10 @@ impl Parser {
                     TokenKind::If => self.parse_if_expression(),
                     TokenKind::Fun => self.parse_function_definition(),
                     TokenKind::Call => self.parse_function_call(),
+                    TokenKind::EOF => AstNode::FunctionCall {
+                        name: "()__quit".to_string(),
+                        location: location.clone(),
+                    },
                     _ => todo!("parse_expression not implemented for {:?} yet", token),
                 }
             }

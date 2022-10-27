@@ -1,9 +1,9 @@
-fun not-main in
-  4 5 5 + +
-end
-
 fun main in
-  4 5 +
-  call not-main
-  + +
+  24 12
+
+  > if
+    "12 is greater than 24"
+  else
+    "12 is less than 24"
+  end
 end

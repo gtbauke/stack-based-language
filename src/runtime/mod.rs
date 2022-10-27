@@ -100,6 +100,277 @@ impl Interpreter {
                     self.stack.push(result);
                     self.ip += 1;
                 }
+                Instruction::Sub => {
+                    // TODO: handle types here
+                    let right = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let left = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let result = match (left, right) {
+                        (Value::I64(left), Value::I64(right)) => Value::I64(left - right),
+                        (Value::F64(left), Value::F64(right)) => Value::F64(left - right),
+                        (Value::I64(left), Value::F64(right)) => Value::F64(left as f64 - right),
+                        (Value::F64(left), Value::I64(right)) => Value::F64(left - right as f64),
+                        _ => return Err(RuntimeError::InvalidTypes),
+                    };
+
+                    self.stack.push(result);
+                    self.ip += 1;
+                }
+                Instruction::Mul => {
+                    // TODO: handle types here
+                    let right = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let left = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let result = match (left, right) {
+                        (Value::I64(left), Value::I64(right)) => Value::I64(left * right),
+                        (Value::F64(left), Value::F64(right)) => Value::F64(left * right),
+                        (Value::I64(left), Value::F64(right)) => Value::F64(left as f64 * right),
+                        (Value::F64(left), Value::I64(right)) => Value::F64(left * right as f64),
+                        _ => return Err(RuntimeError::InvalidTypes),
+                    };
+
+                    self.stack.push(result);
+                    self.ip += 1;
+                }
+                Instruction::Div => {
+                    // TODO: handle types here
+                    let right = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let left = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let result = match (left, right) {
+                        (Value::I64(left), Value::I64(right)) => Value::I64(left / right),
+                        (Value::F64(left), Value::F64(right)) => Value::F64(left / right),
+                        (Value::I64(left), Value::F64(right)) => Value::F64(left as f64 / right),
+                        (Value::F64(left), Value::I64(right)) => Value::F64(left / right as f64),
+                        _ => return Err(RuntimeError::InvalidTypes),
+                    };
+
+                    self.stack.push(result);
+                    self.ip += 1;
+                }
+                Instruction::Mod => {
+                    // TODO: handle types here
+                    let right = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let left = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let result = match (left, right) {
+                        (Value::I64(left), Value::I64(right)) => Value::I64(left % right),
+                        (Value::F64(left), Value::F64(right)) => Value::F64(left % right),
+                        (Value::I64(left), Value::F64(right)) => Value::F64(left as f64 % right),
+                        (Value::F64(left), Value::I64(right)) => Value::F64(left % right as f64),
+                        _ => return Err(RuntimeError::InvalidTypes),
+                    };
+
+                    self.stack.push(result);
+                    self.ip += 1;
+                }
+                Instruction::Not => {
+                    let value = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let result = match value {
+                        Value::Bool(value) => Value::Bool(!value),
+                        _ => return Err(RuntimeError::InvalidTypes),
+                    };
+
+                    self.stack.push(result);
+                    self.ip += 1;
+                }
+                Instruction::And => {
+                    let right = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let left = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let result = match (left, right) {
+                        (Value::Bool(left), Value::Bool(right)) => Value::Bool(left && right),
+                        _ => return Err(RuntimeError::InvalidTypes),
+                    };
+
+                    self.stack.push(result);
+                    self.ip += 1;
+                }
+                Instruction::Or => {
+                    let right = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let left = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let result = match (left, right) {
+                        (Value::Bool(left), Value::Bool(right)) => Value::Bool(left || right),
+                        _ => return Err(RuntimeError::InvalidTypes),
+                    };
+
+                    self.stack.push(result);
+                    self.ip += 1;
+                }
+                Instruction::Equals => {
+                    let right = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let left = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let result = right.equals(&left);
+
+                    self.stack.push(result);
+                    self.ip += 1;
+                }
+                Instruction::NotEquals => {
+                    let right = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let left = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let result = match right.equals(&left) {
+                        Value::Bool(value) => Value::Bool(!value),
+                        _ => return Err(RuntimeError::InvalidTypes),
+                    };
+
+                    self.stack.push(result);
+                    self.ip += 1;
+                }
+                Instruction::LessThan => {
+                    let right = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let left = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let result = match (left, right) {
+                        (Value::I64(left), Value::I64(right)) => Value::Bool(left < right),
+                        (Value::F64(left), Value::F64(right)) => Value::Bool(left < right),
+                        (Value::I64(left), Value::F64(right)) => Value::Bool((left as f64) < right),
+                        (Value::F64(left), Value::I64(right)) => Value::Bool(left < right as f64),
+                        _ => return Err(RuntimeError::InvalidTypes),
+                    };
+
+                    self.stack.push(result);
+                    self.ip += 1;
+                }
+                Instruction::LessThanEquals => {
+                    let right = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let left = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let result = match (left, right) {
+                        (Value::I64(left), Value::I64(right)) => Value::Bool(left <= right),
+                        (Value::F64(left), Value::F64(right)) => Value::Bool(left <= right),
+                        (Value::I64(left), Value::F64(right)) => {
+                            Value::Bool((left as f64) <= right)
+                        }
+                        (Value::F64(left), Value::I64(right)) => Value::Bool(left <= right as f64),
+                        _ => return Err(RuntimeError::InvalidTypes),
+                    };
+
+                    self.stack.push(result);
+                    self.ip += 1;
+                }
+                Instruction::GreaterThan => {
+                    let right = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let left = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let result = match (left, right) {
+                        (Value::I64(left), Value::I64(right)) => Value::Bool(left > right),
+                        (Value::F64(left), Value::F64(right)) => Value::Bool(left > right),
+                        (Value::I64(left), Value::F64(right)) => Value::Bool((left as f64) > right),
+                        (Value::F64(left), Value::I64(right)) => Value::Bool(left > right as f64),
+                        _ => return Err(RuntimeError::InvalidTypes),
+                    };
+
+                    self.stack.push(result);
+                    self.ip += 1;
+                }
+                Instruction::GreaterThanEquals => {
+                    let right = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let left = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let result = match (left, right) {
+                        (Value::I64(left), Value::I64(right)) => Value::Bool(left >= right),
+                        (Value::F64(left), Value::F64(right)) => Value::Bool(left >= right),
+                        (Value::I64(left), Value::F64(right)) => {
+                            Value::Bool((left as f64) >= right)
+                        }
+                        (Value::F64(left), Value::I64(right)) => Value::Bool(left >= right as f64),
+                        _ => return Err(RuntimeError::InvalidTypes),
+                    };
+
+                    self.stack.push(result);
+                    self.ip += 1;
+                }
                 Instruction::Call(index) => {
                     self.brp = self.bp;
                     self.irp = self.ip + 1;
@@ -107,6 +378,24 @@ impl Interpreter {
                     self.bp = index;
                     self.ip = 0;
                 }
+                Instruction::JumpIfFalse(index) => {
+                    let value = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    let result = match value {
+                        Value::Bool(value) => value,
+                        _ => return Err(RuntimeError::InvalidTypes),
+                    };
+
+                    if result {
+                        self.ip += 1;
+                    } else {
+                        self.ip = index;
+                    }
+                }
+                Instruction::Jump(index) => self.ip = index,
                 Instruction::Return => {
                     self.bp = self.brp;
                     self.ip = self.irp;

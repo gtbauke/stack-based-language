@@ -34,11 +34,12 @@ fn main() {
     let mut compiler = Compiler::new(program);
     let program = compiler.compile(ast).expect("Unable to compile program");
 
+    println!("{:#?}", &program);
+
     let mut interpreter = Interpreter::new(program.clone());
     let result = interpreter
         .interpret()
         .expect("Unable to interpret program");
 
-    println!("{:#?}", &program);
     println!("{:#?}", result);
 }

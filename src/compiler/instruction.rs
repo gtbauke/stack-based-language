@@ -1,6 +1,7 @@
 #[derive(Debug, Clone)]
 pub enum Instruction {
     NoOp,
+    Patch,
 
     LoadI64(i64),
     LoadF64(f64),

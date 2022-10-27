@@ -12,7 +12,12 @@ impl Block {
         }
     }
 
-    pub fn add_instruction(&mut self, instruction: Instruction) {
+    pub fn add_instruction(&mut self, instruction: Instruction) -> usize {
         self.instructions.push(instruction);
+        self.instructions.len() - 1
+    }
+
+    pub fn patch_instruction(&mut self, index: usize, instruction: Instruction) {
+        self.instructions[index] = instruction;
     }
 }
