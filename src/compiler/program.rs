@@ -2,10 +2,10 @@ use super::instruction::Instruction;
 
 #[derive(Debug, Clone)]
 pub struct Program {
-    instructions: Vec<Instruction>,
-    entry_point: usize,
+    pub instructions: Vec<Instruction>,
+    pub entry_point: usize,
 
-    strings: Vec<String>,
+    pub strings: Vec<String>,
 }
 
 impl Program {

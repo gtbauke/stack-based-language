@@ -1,12 +1,15 @@
 mod compiler;
 mod lexer;
 mod parser;
+mod runtime;
 mod token;
 
 use compiler::Compiler;
 use lexer::Lexer;
 use parser::Parser;
 use std::{env, fs};
+
+use crate::runtime::Interpreter;
 
 fn main() {
     let args = env::args().skip(1).collect::<Vec<String>>();
@@ -25,5 +28,11 @@ fn main() {
 
     let program = compiler.compile(ast).expect("Unable to compile program");
 
-    println!("{:#?}", program);
+    let mut interpreter = Interpreter::new(program.clone());
+    let result = interpreter
+        .interpret()
+        .expect("Unable to interpret program");
+
+    println!("{:#?}", &program);
+    println!("{:#?}", result);
 }

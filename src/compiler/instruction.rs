@@ -30,4 +30,6 @@ pub enum Instruction {
     Jump(usize),
     JumpIfFalse(usize),
     JumpIfTrue(usize),
+
+    Halt,
 }
