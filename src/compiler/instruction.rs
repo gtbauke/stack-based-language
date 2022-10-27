@@ -31,5 +31,6 @@ pub enum Instruction {
     JumpIfFalse(usize),
     JumpIfTrue(usize),
 
+    Return,
     Halt,
 }

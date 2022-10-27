@@ -1,38 +1,34 @@
-use crate::{
-    lexer::Lexer,
-    token::{Token, TokenKind},
-};
+use core::panic;
+
+use crate::token::{Token, TokenKind};
 
 use self::ast::{AstNode, Block};
 
 pub mod ast;
 
 #[derive(Debug)]
-pub struct Parser<'a> {
-    lexer: &'a mut Lexer,
-
-    current: Option<Token>,
-    previous: Option<Token>,
+pub struct Parser {
+    tokens: Vec<Token>,
+    current: usize,
 }
 
-impl<'a> Parser<'a> {
-    pub fn new(lexer: &'a mut Lexer) -> Parser<'a> {
-        Parser {
-            lexer,
-            current: None,
-            previous: None,
-        }
+impl Parser {
+    pub fn new(tokens: Vec<Token>) -> Parser {
+        Parser { tokens, current: 0 }
     }
 
     fn is_at_end(&self) -> bool {
-        self.current
-            .as_ref()
-            .map_or(false, |token| token.kind == TokenKind::EOF)
+        self.tokens[self.current].kind == TokenKind::EOF
     }
 
-    fn advance(&mut self) {
-        self.previous = self.current.clone();
-        self.current = Some(self.lexer.next());
+    fn advance(&mut self) -> Option<&Token> {
+        self.current += 1;
+
+        if self.is_at_end() {
+            None
+        } else {
+            Some(&self.tokens[self.current - 1])
+        }
     }
 
     fn get_function_name(&self, kind: &TokenKind) -> Option<String> {
@@ -55,50 +51,50 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn consume(&mut self, expected: TokenKind) -> Option<Token> {
-        if self
-            .current
-            .as_ref()
-            .map_or(false, |token| token.kind == expected)
-        {
-            self.advance();
-            self.previous.clone()
-        } else {
-            None
+    fn consume(&mut self, expected: TokenKind) -> Option<&Token> {
+        match self.tokens.get(self.current) {
+            Some(token) if token.kind == expected => {
+                self.current += 1;
+                Some(token)
+            }
+            _ => None,
         }
     }
 
     fn consume_identifier(&mut self) -> Option<String> {
-        if let Some(Token {
-            kind: TokenKind::Identifier(name),
-            ..
-        }) = self.current.clone()
-        {
-            self.advance();
-            Some(name)
-        } else {
-            None
+        match self.tokens.get(self.current) {
+            Some(Token {
+                kind: TokenKind::Identifier(lexeme),
+                ..
+            }) => {
+                self.current += 1;
+                Some(lexeme.clone())
+            }
+            _ => panic!("Expected identifier"),
         }
     }
 
-    fn consume_any_of(&mut self, kinds: Vec<TokenKind>) -> Option<Token> {
-        if self
-            .current
-            .as_ref()
-            .map_or(false, |token| kinds.contains(&token.kind))
-        {
-            self.advance();
-            self.previous.clone()
-        } else {
-            None
+    fn consume_any_of(&mut self, kinds: Vec<TokenKind>) -> Option<&Token> {
+        match self.tokens.get(self.current) {
+            Some(token) if kinds.contains(&token.kind) => {
+                self.current += 1;
+                Some(token)
+            }
+            _ => panic!("Expected one of {:?}", kinds),
         }
+    }
+
+    fn peek(&self, offset: usize) -> Option<&Token> {
+        self.tokens.get(self.current + offset)
     }
 
     fn parse_block(&mut self) -> Block {
         let mut nodes = Vec::new();
 
         loop {
-            match self.current.as_ref() {
+            let token = self.peek(0);
+
+            match token {
                 None => panic!("Unexpected end of file"),
                 Some(token) => match token.kind {
                     TokenKind::End => break,
@@ -116,7 +112,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_function_definition(&mut self) -> AstNode {
-        let location = self.current.as_ref().unwrap().location.clone();
+        let location = self.peek(0).unwrap().location.clone();
         self.advance();
 
         let name = match self.consume_identifier() {
@@ -141,14 +137,16 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_if_expression(&mut self) -> AstNode {
-        let location = self.current.as_ref().unwrap().location.clone();
+        let location = self.peek(0).unwrap().location.clone();
         self.advance();
 
         let mut then_branch = Vec::<AstNode>::new();
         let mut else_branch = Vec::<AstNode>::new();
 
         loop {
-            match self.current.as_ref() {
+            let token = self.peek(0);
+
+            match token {
                 None => {
                     panic!("Unexpected end of file");
                 }
@@ -170,7 +168,7 @@ impl<'a> Parser<'a> {
             Some(token) => match token.kind {
                 TokenKind::Else => {
                     loop {
-                        let token = self.current.as_ref();
+                        let token = self.peek(0);
 
                         match token {
                             None => {
@@ -192,7 +190,8 @@ impl<'a> Parser<'a> {
             },
         }
 
-        let location = location.combine(&self.previous.as_ref().unwrap().location);
+        let location =
+            location.combine(else_branch.last().map_or(&location, |node| node.location()));
 
         AstNode::IfExpression {
             location,
@@ -205,8 +204,24 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_function_call(&mut self) -> AstNode {
+        let location = self.peek(0).unwrap().location.clone();
+        self.advance();
+
+        let name = match self.consume_identifier() {
+            Some(name) => name,
+            None => {
+                panic!("You need to specify a function to call")
+            }
+        };
+
+        AstNode::FunctionCall { name, location }
+    }
+
     fn parse_expression(&mut self) -> AstNode {
-        match self.current.as_ref() {
+        let token = self.peek(0);
+
+        match token {
             Some(token) => {
                 let location = &token.location;
 
@@ -246,6 +261,7 @@ impl<'a> Parser<'a> {
                     }
                     TokenKind::If => self.parse_if_expression(),
                     TokenKind::Fun => self.parse_function_definition(),
+                    TokenKind::Call => self.parse_function_call(),
                     _ => todo!("parse_expression not implemented for {:?} yet", token),
                 }
             }
@@ -260,13 +276,7 @@ impl<'a> Parser<'a> {
         let mut nodes = Vec::new();
 
         while !self.is_at_end() {
-            self.advance();
-
-            if self
-                .current
-                .as_ref()
-                .map_or(false, |token| token.kind == TokenKind::EOF)
-            {
+            if self.is_at_end() {
                 break;
             }
 

@@ -7,6 +7,8 @@ pub mod program;
 
 mod error;
 
+// TODO: hoist functions
+
 #[derive(Debug, Clone)]
 pub struct Compiler {
     program: Program,
@@ -46,11 +48,31 @@ impl Compiler {
                 "__or" => self.program.add_instruction(Instruction::Or),
                 "__eqeq" => self.program.add_instruction(Instruction::Equals),
                 "__noteq" => self.program.add_instruction(Instruction::NotEquals),
-                _ => todo!(
-                    "compile_node::AstNode::FunctionCall is not implemented for {} yet",
-                    name
-                ),
+                _ => {
+                    let index = match self.program.functions.get(name) {
+                        Some(i) => *i,
+                        None => return Err(CompilerError::UnknownFunction(name.clone())),
+                    };
+
+                    self.program.add_instruction(Instruction::Call(index));
+                }
             },
+            AstNode::FunctionDeclaration { name, body, .. } => {
+                let entry_point = self.program.instructions.len();
+                self.program.add_function(name, entry_point);
+
+                for node in &body.nodes {
+                    self.compile_node(node)?;
+                }
+
+                let instruction = if name == "main" {
+                    Instruction::Halt
+                } else {
+                    Instruction::Return
+                };
+
+                self.program.add_instruction(instruction);
+            }
             _ => todo!("compile_node is not implemented for {:?} yet", node),
         }
 

@@ -21,7 +21,9 @@ fn main() {
 
     let source = fs::read_to_string(&args[0]).expect("Unable to read file");
     let mut lexer = Lexer::new(&source);
-    let mut parser = Parser::new(&mut lexer);
+    let tokens = lexer.lex();
+
+    let mut parser = Parser::new(tokens);
 
     let ast = parser.parse();
     let mut compiler = Compiler::new();

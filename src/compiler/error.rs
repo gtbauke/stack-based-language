@@ -1,2 +1,4 @@
 #[derive(Debug, Clone)]
-pub enum CompilerError {}
+pub enum CompilerError {
+    UnknownFunction(String),
+}

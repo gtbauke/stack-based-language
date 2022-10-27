@@ -13,14 +13,18 @@ pub struct Interpreter {
     stack: Vec<Value>,
     program: Program,
     ip: usize,
+    rp: usize,
 }
 
 impl Interpreter {
     pub fn new(program: Program) -> Self {
+        let ip = &program.functions.get("main").map_or(0, |i| *i);
+
         Self {
             stack: Vec::new(),
             program,
-            ip: 0,
+            ip: *ip,
+            rp: 0,
         }
     }
 
@@ -34,26 +38,26 @@ impl Interpreter {
                 break;
             }
 
-            let instruction = self.current_instruction();
+            let instruction = self.current_instruction().clone();
 
             match instruction {
                 Instruction::Halt => break,
                 Instruction::NoOp => {}
                 Instruction::LoadI64(value) => {
-                    self.stack.push(Value::I64(*value));
+                    self.stack.push(Value::I64(value));
                     self.ip += 1;
                 }
                 Instruction::LoadF64(value) => {
-                    self.stack.push(Value::F64(*value));
+                    self.stack.push(Value::F64(value));
                     self.ip += 1;
                 }
                 Instruction::LoadBool(value) => {
-                    self.stack.push(Value::Bool(*value));
+                    self.stack.push(Value::Bool(value));
                     self.ip += 1;
                 }
                 Instruction::LoadConstant(index) => {
-                    let string_length = self.program.strings[*index].len();
-                    let value = Value::String(Str::new(*index, string_length));
+                    let string_length = self.program.strings[index].len();
+                    let value = Value::String(Str::new(index, string_length));
 
                     self.stack.push(value);
                     self.ip += 1;
@@ -87,6 +91,13 @@ impl Interpreter {
 
                     self.stack.push(result);
                     self.ip += 1;
+                }
+                Instruction::Call(index) => {
+                    self.rp = self.ip + 1;
+                    self.ip = index;
+                }
+                Instruction::Return => {
+                    self.ip = self.rp;
                 }
                 _ => todo!("Instruction not implemented: {:?}", instruction),
             }

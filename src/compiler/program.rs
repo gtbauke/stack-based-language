@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use super::instruction::Instruction;
 
 #[derive(Debug, Clone)]
@@ -6,6 +8,7 @@ pub struct Program {
     pub entry_point: usize,
 
     pub strings: Vec<String>,
+    pub functions: HashMap<String, usize>,
 }
 
 impl Program {
@@ -15,6 +18,7 @@ impl Program {
             entry_point: 0,
 
             strings: Vec::new(),
+            functions: HashMap::new(),
         }
     }
 
@@ -34,5 +38,9 @@ impl Program {
                 self.strings.len() - 1
             }
         }
+    }
+
+    pub fn add_function(&mut self, name: &str, entry_point: usize) {
+        self.functions.insert(name.to_string(), entry_point);
     }
 }

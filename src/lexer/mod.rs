@@ -146,6 +146,7 @@ impl Lexer {
             "not" => TokenKind::Not,
             "true" => TokenKind::True,
             "false" => TokenKind::False,
+            "call" => TokenKind::Call,
             _ => TokenKind::Identifier(lexeme.to_string()),
         };
 
@@ -248,5 +249,20 @@ impl Lexer {
             },
             None => self.new_token(TokenKind::EOF),
         }
+    }
+
+    pub fn lex(&mut self) -> Vec<Token> {
+        let mut tokens = Vec::new();
+
+        loop {
+            let token = self.next();
+            tokens.push(token.clone());
+
+            if token.kind == TokenKind::EOF {
+                break;
+            }
+        }
+
+        tokens
     }
 }
