@@ -1,10 +1,11 @@
 use crate::parser::ast::AstNode;
 
-use self::{block::Block, error::CompilerError, instruction::Instruction, program::Program};
+use self::{error::CompilerError, instruction::Instruction, program::Program};
 
 pub mod block;
 pub mod instruction;
 pub mod program;
+pub mod resolver;
 
 mod error;
 
@@ -17,9 +18,9 @@ pub struct Compiler {
 }
 
 impl Compiler {
-    pub fn new() -> Self {
+    pub fn new(resolved_program: Program) -> Self {
         Compiler {
-            program: Program::new(),
+            program: resolved_program,
             current_block: 0,
         }
     }
@@ -92,8 +93,10 @@ impl Compiler {
                 }
             },
             AstNode::FunctionDeclaration { name, body, .. } => {
-                let entry_point = self.program.add_block();
-                self.program.add_function(name, entry_point);
+                let entry_point = match self.program.functions.get(name) {
+                    Some(index) => *index,
+                    None => unreachable!(),
+                };
 
                 let old_block = self.current_block;
                 self.current_block = entry_point;
