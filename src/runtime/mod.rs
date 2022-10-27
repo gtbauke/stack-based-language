@@ -159,7 +159,9 @@ impl Interpreter {
                     };
 
                     let result = match (left, right) {
-                        (Value::I64(left), Value::I64(right)) => Value::I64(left / right),
+                        (Value::I64(left), Value::I64(right)) => {
+                            Value::F64(left as f64 / right as f64)
+                        }
                         (Value::F64(left), Value::F64(right)) => Value::F64(left / right),
                         (Value::I64(left), Value::F64(right)) => Value::F64(left as f64 / right),
                         (Value::F64(left), Value::I64(right)) => Value::F64(left / right as f64),
