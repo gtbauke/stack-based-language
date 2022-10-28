@@ -27,6 +27,9 @@ pub enum Instruction {
     LessThanEquals,
     GreaterThan,
     GreaterThanEquals,
+    Dup,
+    Drop,
+    Print,
 
     Jump(usize),
     JumpIfFalse(usize),

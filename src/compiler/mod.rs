@@ -9,8 +9,6 @@ pub mod resolver;
 
 mod error;
 
-// TODO: hoist functions
-
 #[derive(Debug, Clone)]
 pub struct Compiler {
     program: Program,
@@ -160,6 +158,39 @@ impl Compiler {
                 let index = self.current_block().instructions.len();
                 self.current_block()
                     .patch_instruction(end_then_branch_instruction, Instruction::Jump(index));
+            }
+            AstNode::WhileExpression {
+                condition, body, ..
+            } => {
+                let condition_block_entry = self.current_block().instructions.len();
+
+                for node in &condition.nodes {
+                    self.compile_node(node)?;
+                }
+
+                let instruction_to_patch = self.current_block().add_instruction(Instruction::Patch);
+
+                for node in &body.nodes {
+                    self.compile_node(node)?;
+                }
+
+                self.current_block()
+                    .add_instruction(Instruction::Jump(condition_block_entry));
+
+                let index = self.current_block().instructions.len();
+                self.current_block()
+                    .patch_instruction(instruction_to_patch, Instruction::JumpIfFalse(index));
+            }
+            AstNode::Identifier(name, _) => {
+                match name.as_str() {
+                    "dup" => self.current_block().add_instruction(Instruction::Dup),
+                    "drop" => self.current_block().add_instruction(Instruction::Drop),
+                    "print" => self.current_block().add_instruction(Instruction::Print),
+                    _ => todo!(
+                        "compile_node::AstNode::Identifier is not implemented for {} yet",
+                        name
+                    ),
+                };
             }
             _ => todo!("compile_node is not implemented for {:?} yet", node),
         }
