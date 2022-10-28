@@ -12,4 +12,6 @@ fun main do
 
     1 +
   end
+
+  drop
 end

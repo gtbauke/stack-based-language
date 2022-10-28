@@ -1,5 +1,7 @@
+use crate::token::location::Location;
+
 #[derive(Debug, Clone)]
-pub enum Instruction {
+pub enum InstructionKind {
     NoOp,
     Patch,
 
@@ -29,12 +31,31 @@ pub enum Instruction {
     GreaterThanEquals,
     Dup,
     Drop,
+    Swap,
+    Over,
     Print,
 
     Jump(usize),
     JumpIfFalse(usize),
     JumpIfTrue(usize),
 
+    DebugStack,
+
     Return,
     Halt,
+}
+
+#[derive(Debug, Clone)]
+pub struct Instruction {
+    pub kind: InstructionKind,
+    pub location: Location,
+}
+
+impl Instruction {
+    pub fn new(kind: InstructionKind, location: &Location) -> Self {
+        Self {
+            kind,
+            location: location.clone(),
+        }
+    }
 }

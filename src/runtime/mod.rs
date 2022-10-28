@@ -1,4 +1,7 @@
-use crate::compiler::{instruction::Instruction, program::Program};
+use crate::compiler::{
+    instruction::{Instruction, InstructionKind},
+    program::Program,
+};
 
 use self::{
     error::RuntimeError,
@@ -48,38 +51,46 @@ impl Interpreter {
 
             let instruction = self.current_instruction().clone();
 
-            match instruction {
-                Instruction::Halt => break,
-                Instruction::NoOp => {}
-                Instruction::LoadI64(value) => {
+            match instruction.kind {
+                InstructionKind::Halt => break,
+                InstructionKind::NoOp => {}
+                InstructionKind::DebugStack => {
+                    println!("Stack: {:#?}", self.stack);
+                    self.ip += 1;
+                }
+                InstructionKind::LoadI64(value) => {
                     self.stack.push(Value::I64(value));
                     self.ip += 1;
                 }
-                Instruction::LoadF64(value) => {
+                InstructionKind::LoadF64(value) => {
                     self.stack.push(Value::F64(value));
                     self.ip += 1;
                 }
-                Instruction::LoadBool(value) => {
+                InstructionKind::LoadBool(value) => {
                     self.stack.push(Value::Bool(value));
                     self.ip += 1;
                 }
-                Instruction::LoadConstant(index) => {
+                InstructionKind::LoadConstant(index) => {
                     let string_length = self.program.strings[index].len();
                     let value = Value::String(Str::new(index, string_length));
 
                     self.stack.push(value);
                     self.ip += 1;
                 }
-                Instruction::Add => {
+                InstructionKind::Add => {
                     // TODO: handle types here
                     let right = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let left = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let result = match (left, right) {
@@ -94,22 +105,26 @@ impl Interpreter {
                             let index = self.program.add_string(&string);
                             Value::String(Str::new(index, string.len()))
                         }
-                        _ => return Err(RuntimeError::InvalidTypes),
+                        _ => return Err(RuntimeError::InvalidTypes(instruction.location.clone())),
                     };
 
                     self.stack.push(result);
                     self.ip += 1;
                 }
-                Instruction::Sub => {
+                InstructionKind::Sub => {
                     // TODO: handle types here
                     let right = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let left = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let result = match (left, right) {
@@ -117,22 +132,26 @@ impl Interpreter {
                         (Value::F64(left), Value::F64(right)) => Value::F64(left - right),
                         (Value::I64(left), Value::F64(right)) => Value::F64(left as f64 - right),
                         (Value::F64(left), Value::I64(right)) => Value::F64(left - right as f64),
-                        _ => return Err(RuntimeError::InvalidTypes),
+                        _ => return Err(RuntimeError::InvalidTypes(instruction.location.clone())),
                     };
 
                     self.stack.push(result);
                     self.ip += 1;
                 }
-                Instruction::Mul => {
+                InstructionKind::Mul => {
                     // TODO: handle types here
                     let right = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let left = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let result = match (left, right) {
@@ -140,22 +159,26 @@ impl Interpreter {
                         (Value::F64(left), Value::F64(right)) => Value::F64(left * right),
                         (Value::I64(left), Value::F64(right)) => Value::F64(left as f64 * right),
                         (Value::F64(left), Value::I64(right)) => Value::F64(left * right as f64),
-                        _ => return Err(RuntimeError::InvalidTypes),
+                        _ => return Err(RuntimeError::InvalidTypes(instruction.location.clone())),
                     };
 
                     self.stack.push(result);
                     self.ip += 1;
                 }
-                Instruction::Div => {
+                InstructionKind::Div => {
                     // TODO: handle types here
                     let right = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let left = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let result = match (left, right) {
@@ -165,22 +188,26 @@ impl Interpreter {
                         (Value::F64(left), Value::F64(right)) => Value::F64(left / right),
                         (Value::I64(left), Value::F64(right)) => Value::F64(left as f64 / right),
                         (Value::F64(left), Value::I64(right)) => Value::F64(left / right as f64),
-                        _ => return Err(RuntimeError::InvalidTypes),
+                        _ => return Err(RuntimeError::InvalidTypes(instruction.location.clone())),
                     };
 
                     self.stack.push(result);
                     self.ip += 1;
                 }
-                Instruction::Mod => {
+                InstructionKind::Mod => {
                     // TODO: handle types here
                     let right = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let left = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let result = match (left, right) {
@@ -188,73 +215,87 @@ impl Interpreter {
                         (Value::F64(left), Value::F64(right)) => Value::F64(left % right),
                         (Value::I64(left), Value::F64(right)) => Value::F64(left as f64 % right),
                         (Value::F64(left), Value::I64(right)) => Value::F64(left % right as f64),
-                        _ => return Err(RuntimeError::InvalidTypes),
+                        _ => return Err(RuntimeError::InvalidTypes(instruction.location.clone())),
                     };
 
                     self.stack.push(result);
                     self.ip += 1;
                 }
-                Instruction::Not => {
+                InstructionKind::Not => {
                     let value = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let result = match value {
                         Value::Bool(value) => Value::Bool(!value),
-                        _ => return Err(RuntimeError::InvalidTypes),
+                        _ => return Err(RuntimeError::InvalidTypes(instruction.location.clone())),
                     };
 
                     self.stack.push(result);
                     self.ip += 1;
                 }
-                Instruction::And => {
+                InstructionKind::And => {
                     let right = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let left = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let result = match (left, right) {
                         (Value::Bool(left), Value::Bool(right)) => Value::Bool(left && right),
-                        _ => return Err(RuntimeError::InvalidTypes),
+                        _ => return Err(RuntimeError::InvalidTypes(instruction.location.clone())),
                     };
 
                     self.stack.push(result);
                     self.ip += 1;
                 }
-                Instruction::Or => {
+                InstructionKind::Or => {
                     let right = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let left = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let result = match (left, right) {
                         (Value::Bool(left), Value::Bool(right)) => Value::Bool(left || right),
-                        _ => return Err(RuntimeError::InvalidTypes),
+                        _ => return Err(RuntimeError::InvalidTypes(instruction.location.clone())),
                     };
 
                     self.stack.push(result);
                     self.ip += 1;
                 }
-                Instruction::Equals => {
+                InstructionKind::Equals => {
                     let right = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let left = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let result = right.equals(&left);
@@ -262,34 +303,42 @@ impl Interpreter {
                     self.stack.push(result);
                     self.ip += 1;
                 }
-                Instruction::NotEquals => {
+                InstructionKind::NotEquals => {
                     let right = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let left = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let result = match right.equals(&left) {
                         Value::Bool(value) => Value::Bool(!value),
-                        _ => return Err(RuntimeError::InvalidTypes),
+                        _ => return Err(RuntimeError::InvalidTypes(instruction.location.clone())),
                     };
 
                     self.stack.push(result);
                     self.ip += 1;
                 }
-                Instruction::LessThan => {
+                InstructionKind::LessThan => {
                     let right = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let left = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let result = match (left, right) {
@@ -297,21 +346,25 @@ impl Interpreter {
                         (Value::F64(left), Value::F64(right)) => Value::Bool(left < right),
                         (Value::I64(left), Value::F64(right)) => Value::Bool((left as f64) < right),
                         (Value::F64(left), Value::I64(right)) => Value::Bool(left < right as f64),
-                        _ => return Err(RuntimeError::InvalidTypes),
+                        _ => return Err(RuntimeError::InvalidTypes(instruction.location.clone())),
                     };
 
                     self.stack.push(result);
                     self.ip += 1;
                 }
-                Instruction::LessThanEquals => {
+                InstructionKind::LessThanEquals => {
                     let right = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let left = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let result = match (left, right) {
@@ -321,21 +374,25 @@ impl Interpreter {
                             Value::Bool((left as f64) <= right)
                         }
                         (Value::F64(left), Value::I64(right)) => Value::Bool(left <= right as f64),
-                        _ => return Err(RuntimeError::InvalidTypes),
+                        _ => return Err(RuntimeError::InvalidTypes(instruction.location.clone())),
                     };
 
                     self.stack.push(result);
                     self.ip += 1;
                 }
-                Instruction::GreaterThan => {
+                InstructionKind::GreaterThan => {
                     let right = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let left = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let result = match (left, right) {
@@ -343,21 +400,25 @@ impl Interpreter {
                         (Value::F64(left), Value::F64(right)) => Value::Bool(left > right),
                         (Value::I64(left), Value::F64(right)) => Value::Bool((left as f64) > right),
                         (Value::F64(left), Value::I64(right)) => Value::Bool(left > right as f64),
-                        _ => return Err(RuntimeError::InvalidTypes),
+                        _ => return Err(RuntimeError::InvalidTypes(instruction.location.clone())),
                     };
 
                     self.stack.push(result);
                     self.ip += 1;
                 }
-                Instruction::GreaterThanEquals => {
+                InstructionKind::GreaterThanEquals => {
                     let right = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let left = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let result = match (left, right) {
@@ -367,28 +428,30 @@ impl Interpreter {
                             Value::Bool((left as f64) >= right)
                         }
                         (Value::F64(left), Value::I64(right)) => Value::Bool(left >= right as f64),
-                        _ => return Err(RuntimeError::InvalidTypes),
+                        _ => return Err(RuntimeError::InvalidTypes(instruction.location.clone())),
                     };
 
                     self.stack.push(result);
                     self.ip += 1;
                 }
-                Instruction::Call(index) => {
+                InstructionKind::Call(index) => {
                     self.brp = self.bp;
                     self.irp = self.ip + 1;
 
                     self.bp = index;
                     self.ip = 0;
                 }
-                Instruction::JumpIfFalse(index) => {
+                InstructionKind::JumpIfFalse(index) => {
                     let value = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     let result = match value {
                         Value::Bool(value) => value,
-                        _ => return Err(RuntimeError::InvalidTypes),
+                        _ => return Err(RuntimeError::InvalidTypes(instruction.location.clone())),
                     };
 
                     if result {
@@ -397,15 +460,17 @@ impl Interpreter {
                         self.ip = index;
                     }
                 }
-                Instruction::Jump(index) => self.ip = index,
-                Instruction::Return => {
+                InstructionKind::Jump(index) => self.ip = index,
+                InstructionKind::Return => {
                     self.bp = self.brp;
                     self.ip = self.irp;
                 }
-                Instruction::Dup => {
+                InstructionKind::Dup => {
                     let value = match self.stack.pop() {
                         Some(value) => value,
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     self.stack.push(value.clone());
@@ -413,11 +478,52 @@ impl Interpreter {
 
                     self.ip += 1;
                 }
-                Instruction::Drop => match self.stack.pop() {
+                InstructionKind::Drop => match self.stack.pop() {
                     Some(_) => self.ip += 1,
-                    None => return Err(RuntimeError::StackUnderflow),
+                    None => return Err(RuntimeError::StackUnderflow(instruction.location.clone())),
                 },
-                Instruction::Print => {
+                InstructionKind::Swap => {
+                    let right = match self.stack.pop() {
+                        Some(value) => value,
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
+                    };
+
+                    let left = match self.stack.pop() {
+                        Some(value) => value,
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
+                    };
+
+                    self.stack.push(right);
+                    self.stack.push(left);
+
+                    self.ip += 1;
+                }
+                InstructionKind::Over => {
+                    let right = match self.stack.pop() {
+                        Some(value) => value,
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
+                    };
+
+                    let left = match self.stack.pop() {
+                        Some(value) => value,
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
+                    };
+
+                    self.stack.push(left.clone());
+                    self.stack.push(right);
+                    self.stack.push(left);
+
+                    self.ip += 1;
+                }
+                InstructionKind::Print => {
                     let value = match self.stack.pop() {
                         Some(value) => match value {
                             Value::String(Str { string_index, .. }) => {
@@ -425,7 +531,9 @@ impl Interpreter {
                             }
                             _ => value,
                         },
-                        None => return Err(RuntimeError::StackUnderflow),
+                        None => {
+                            return Err(RuntimeError::StackUnderflow(instruction.location.clone()))
+                        }
                     };
 
                     print!("{}", value);

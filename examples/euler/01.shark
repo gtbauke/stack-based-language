@@ -1,0 +1,13 @@
+fun main do
+  0 3 while dup 1000 < do
+    dup 3 % 0 ==
+    over 5 % 0 ==
+    or if
+      swap over + swap
+    end
+
+    1 +
+  end drop
+
+  print "\n" print
+end

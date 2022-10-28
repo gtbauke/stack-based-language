@@ -214,10 +214,7 @@ impl Parser {
             ),
             Some(token) => match token.kind {
                 TokenKind::Else => Some(self.parse_block()),
-                TokenKind::End => {
-                    self.consume(TokenKind::End);
-                    None
-                }
+                TokenKind::End => None,
                 _ => panic!(
                     "Expected token {:?}, got {:?}",
                     [TokenKind::Else, TokenKind::End],

@@ -43,9 +43,13 @@ fn main() {
     println!("{:#?}", &program);
 
     let mut interpreter = Interpreter::new(program.clone());
-    let result = interpreter
-        .interpret()
-        .expect("Unable to interpret program");
+    let result = match interpreter.interpret() {
+        Ok(result) => result,
+        Err(error) => {
+            println!("{}", error);
+            return;
+        }
+    };
 
     println!("{:#?}", result);
 }
