@@ -155,22 +155,63 @@ impl Lexer {
     }
 
     fn handle_strings(&mut self) -> Token {
-        while let Some(c) = self.peek(0) {
-            if c == b'"' {
-                break;
+        let mut buffer = String::new();
+
+        loop {
+            let c = self.peek(0);
+
+            match c {
+                None => panic!("Unexpected end of string"),
+                Some(c) => match c {
+                    b'"' => {
+                        self.advance();
+                        break;
+                    }
+                    b'\\' => {
+                        self.advance();
+
+                        let c = self.peek(0);
+                        match c {
+                            None => panic!("Unexpected end of string"),
+                            Some(b'"') => {
+                                self.advance();
+                                buffer.push('"');
+                            }
+                            Some(b'\\') => {
+                                self.advance();
+                                buffer.push('\\');
+                            }
+                            Some(b'n') => {
+                                self.advance();
+                                buffer.push('\n');
+                            }
+                            Some(b'r') => {
+                                self.advance();
+                                buffer.push('\r');
+                            }
+                            Some(b't') => {
+                                self.advance();
+                                buffer.push('\t');
+                            }
+                            Some(b'0') => {
+                                self.advance();
+                                buffer.push('\0');
+                            }
+                            Some(_) => {
+                                // TODO: add unicode escape sequences and hex escape sequences
+                                panic!("Invalid escape sequence");
+                            }
+                        }
+                    }
+                    _ => {
+                        buffer.push(c as char);
+                        self.advance();
+                    }
+                },
             }
-
-            self.advance();
         }
 
-        if self.peek(0) == Some(b'"') {
-            self.advance();
-        } else {
-            return self.new_token(TokenKind::Error);
-        }
-
-        let lexeme = &self.source[self.start + 1..self.current - 1];
-        self.new_token(TokenKind::String(lexeme.to_string()))
+        self.new_token(TokenKind::String(buffer))
     }
 
     pub fn next(&mut self) -> Token {
