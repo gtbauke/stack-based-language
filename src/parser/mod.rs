@@ -1,12 +1,11 @@
 use core::panic;
 
-use crate::token::{Token, TokenKind};
+use crate::token::{location::Location, Token, TokenKind};
 
 use self::ast::{AstNode, Block};
 
 pub mod ast;
 
-// TODO: rewrite parser because there is an error when multiple blocks follow each other that I cannot find
 #[derive(Debug)]
 pub struct Parser {
     tokens: Vec<Token>,
@@ -16,20 +15,6 @@ pub struct Parser {
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Parser {
         Parser { tokens, current: 0 }
-    }
-
-    fn is_at_end(&self) -> bool {
-        self.current >= self.tokens.len() || self.tokens[self.current].kind == TokenKind::EOF
-    }
-
-    fn advance(&mut self) -> Option<&Token> {
-        self.current += 1;
-
-        if self.is_at_end() {
-            None
-        } else {
-            Some(&self.tokens[self.current - 1])
-        }
     }
 
     fn get_function_name(&self, kind: &TokenKind) -> Option<String> {
@@ -52,108 +37,96 @@ impl Parser {
         }
     }
 
-    fn consume(&mut self, expected: TokenKind) -> Option<&Token> {
-        match self.peek(0) {
-            Some(token) if token.kind == expected => self.advance(),
-            _ => None,
+    fn peek(&self, offset: usize) -> Option<&Token> {
+        self.tokens.get(self.current + offset)
+    }
+
+    fn previous(&self) -> Option<&Token> {
+        self.tokens.get(self.current - 1)
+    }
+
+    fn previous_location(&self) -> Location {
+        match self.previous() {
+            Some(token) => token.location.clone(),
+            None => panic!("No previous location"),
         }
+    }
+
+    fn advance(&mut self) -> Option<&Token> {
+        self.current += 1;
+        self.tokens.get(self.current - 1)
+    }
+
+    fn is_at_end(&self) -> bool {
+        self.peek(0)
+            .map_or(false, |token| token.kind == TokenKind::EOF)
     }
 
     fn consume_identifier(&mut self) -> Option<String> {
-        match self.tokens.get(self.current) {
-            Some(Token {
-                kind: TokenKind::Identifier(lexeme),
-                ..
-            }) => {
-                self.current += 1;
-                Some(lexeme.clone())
-            }
-            _ => panic!("Expected identifier"),
+        match self.peek(0) {
+            Some(token) => match token.kind.clone() {
+                TokenKind::Identifier(lexeme) => {
+                    self.advance();
+                    Some(lexeme.clone())
+                }
+                _ => None,
+            },
+            None => None,
         }
     }
 
-    fn consume_any_of(&mut self, kinds: Vec<TokenKind>) -> Option<&Token> {
-        match self.tokens.get(self.current) {
-            Some(token) if kinds.contains(&token.kind) => {
-                self.current += 1;
-                Some(token)
-            }
-            _ => panic!("Expected one of {:?}", kinds),
+    fn consume(&mut self, kind: TokenKind) -> Option<&Token> {
+        if self.peek(0).map_or(false, |token| token.kind == kind) {
+            self.advance()
+        } else {
+            panic!("Expected token {:?}, got {:?}", kind, self.peek(0));
         }
     }
 
-    fn peek(&self, offset: usize) -> Option<&Token> {
-        self.tokens.get(self.current + offset)
+    fn consume_any_of(&mut self, kinds: &[TokenKind]) -> Option<&Token> {
+        if self
+            .peek(0)
+            .map_or(false, |token| kinds.contains(&token.kind))
+        {
+            self.advance()
+        } else {
+            panic!(
+                "Expected token {:?}, got {:?}",
+                kinds,
+                self.peek(0).map(|token| token.kind.clone())
+            );
+        }
     }
 
     fn parse_block(&mut self) -> Block {
         let mut nodes = Vec::new();
 
         loop {
-            let token = self.peek(0);
-            // println!("parse_block: {:?}", &token);
-
-            match token {
-                None => {
-                    println!("Unexpected end of file");
-                    break;
-                }
-                Some(token) => match token.kind {
+            match self.peek(0) {
+                Some(token) => match &token.kind {
                     TokenKind::End => break,
-                    _ => {
-                        nodes.push(self.parse_expression());
-
-                        // println!("parse_block_advance<before>: {:?}", &self.peek(0));
-                        self.advance();
-                        // println!("parse_block_advance<after>: {:?}", &self.peek(0));
-                    }
+                    _ => nodes.push(self.parse_node()),
                 },
+                None => break,
             }
         }
 
         self.consume(TokenKind::End);
-
-        println!(
-            "{:#?}",
-            self.tokens
-                .clone()
-                .iter()
-                .skip(self.current)
-                .collect::<Vec<&Token>>()
-        );
-
-        println!("Current token index: {}", self.current);
-
-        Block { nodes }
+        Block::new(nodes)
     }
 
     fn parse_function_definition(&mut self) -> AstNode {
-        let location = self.peek(0).unwrap().location.clone();
-        self.advance();
-
+        let location = self.previous_location();
         let name = match self.consume_identifier() {
-            Some(name) => name,
-            None => {
-                // TODO: error handling
-                panic!("Expected identifier after 'def' keyword");
-            }
+            Some(lexeme) => lexeme,
+            None => panic!("Unable to get function name"),
         };
 
-        self.consume(TokenKind::In);
-
-        println!(
-            "------------- parse_function_definition {} -------------",
-            name
-        );
+        self.consume(TokenKind::Do);
 
         let body = self.parse_block();
-        self.current = self.current - 2;
-
-        println!("Current token index: {}", self.current);
-        println!("--------------------------------------------------------");
-
         let location =
-            location.combine(body.nodes.last().map_or(&location, |node| node.location()));
+            location.combine(body.nodes.last().map_or(&location, |node| &node.location()));
 
         AstNode::FunctionDeclaration {
             name,
@@ -162,198 +135,164 @@ impl Parser {
         }
     }
 
-    fn parse_if_expression(&mut self) -> AstNode {
-        let location = self.peek(0).unwrap().location.clone();
-        self.advance();
-
-        let mut then_branch = Vec::<AstNode>::new();
-        let mut else_branch = Vec::<AstNode>::new();
+    fn parse_while_condition(&mut self) -> Block {
+        let mut nodes = Vec::new();
 
         loop {
-            let token = self.peek(0);
-
-            match token {
-                None => {
-                    panic!("Unexpected end of file");
-                }
-                Some(token) => match token.kind {
-                    TokenKind::End => break,
-                    TokenKind::Else => break,
-                    _ => {
-                        then_branch.push(self.parse_expression());
-                        self.advance();
-                    }
-                },
-            }
-        }
-
-        let token = self.consume_any_of(vec![TokenKind::End, TokenKind::Else]);
-
-        match token {
-            None => panic!("Unexpected end of file"),
-            Some(token) => match token.kind {
-                TokenKind::Else => {
-                    loop {
-                        let token = self.peek(0);
-
-                        match token {
-                            None => {
-                                panic!("Unexpected end of file");
-                            }
-                            Some(token) => match token.kind {
-                                TokenKind::End => break,
-                                _ => {
-                                    else_branch.push(self.parse_expression());
-                                    self.advance();
-                                }
-                            },
-                        }
-                    }
-
-                    self.consume(TokenKind::End);
-                }
-                _ => {}
-            },
-        }
-
-        let location =
-            location.combine(else_branch.last().map_or(&location, |node| node.location()));
-
-        AstNode::IfExpression {
-            location,
-            then_branch: Block { nodes: then_branch },
-            else_branch: if else_branch.len() > 0 {
-                Some(Block { nodes: else_branch })
-            } else {
-                None
-            },
-        }
-    }
-
-    fn parse_function_call(&mut self) -> AstNode {
-        let location = self.peek(0).unwrap().location.clone();
-        self.advance();
-
-        let name = match self.consume_identifier() {
-            Some(name) => name,
-            None => {
-                panic!("You need to specify a function to call")
-            }
-        };
-
-        AstNode::FunctionCall { name, location }
-    }
-
-    fn parse_while_expression(&mut self) -> AstNode {
-        println!("-------------- parse_while_expression --------------");
-        let location = self.peek(0).unwrap().location.clone();
-        self.advance();
-
-        let mut condition = Vec::new();
-
-        loop {
-            let token = self.peek(0);
-
-            match token {
-                None => {
-                    panic!("Unexpected end of file");
-                }
-                Some(token) => match token.kind {
+            match self.peek(0) {
+                Some(token) => match &token.kind {
                     TokenKind::Do => break,
-                    _ => {
-                        condition.push(self.parse_expression());
-                        self.advance();
-                    }
+                    _ => nodes.push(self.parse_node()),
                 },
+                None => break,
             }
         }
 
         self.consume(TokenKind::Do);
+        Block::new(nodes)
+    }
 
+    fn parse_while_expression(&mut self) -> AstNode {
+        let location = self.previous_location();
+        let condition = self.parse_while_condition();
         let body = self.parse_block();
 
         let location =
-            location.combine(body.nodes.last().map_or(&location, |node| node.location()));
+            location.combine(body.nodes.last().map_or(&location, |node| &node.location()));
 
-        println!("----------------------------------------------------");
         AstNode::WhileExpression {
-            condition: Block::new(condition),
+            condition,
             body,
             location,
         }
     }
 
-    fn parse_expression(&mut self) -> AstNode {
-        let token = self.peek(0);
-        println!("parse_expression: {:?}", token);
+    fn parse_operator(&mut self) -> AstNode {
+        let token = match self.previous() {
+            Some(token) => token,
+            None => panic!("No previous token"),
+        };
+
+        let function_name = self.get_function_name(&token.kind);
+        let function_name = match function_name {
+            Some(name) => name,
+            None => panic!("Unable to get function name"),
+        };
+
+        AstNode::FunctionCall {
+            name: function_name,
+            location: token.location.clone(),
+        }
+    }
+
+    fn parse_if_block(&mut self) -> Block {
+        let mut nodes = Vec::new();
+
+        loop {
+            match self.peek(0) {
+                Some(token) => match &token.kind {
+                    TokenKind::Else | TokenKind::End => break,
+                    _ => nodes.push(self.parse_node()),
+                },
+                None => break,
+            }
+        }
+
+        Block::new(nodes)
+    }
+
+    fn parse_if_expression(&mut self) -> AstNode {
+        let location = self.previous_location();
+        let then_branch = self.parse_if_block();
+
+        let terminator = self.consume_any_of(&[TokenKind::Else, TokenKind::End]);
+        let else_branch = match terminator {
+            None => panic!(
+                "Expected token {:?}, got {:?}",
+                [TokenKind::Else, TokenKind::End],
+                self.peek(0)
+            ),
+            Some(token) => match token.kind {
+                TokenKind::Else => Some(self.parse_block()),
+                TokenKind::End => {
+                    self.consume(TokenKind::End);
+                    None
+                }
+                _ => panic!(
+                    "Expected token {:?}, got {:?}",
+                    [TokenKind::Else, TokenKind::End],
+                    self.peek(0)
+                ),
+            },
+        };
+
+        let then_branch_location = then_branch
+            .nodes
+            .last()
+            .map_or(&location, |node| &node.location());
+
+        let location =
+            location.combine(else_branch.as_ref().map_or(&then_branch_location, |block| {
+                block
+                    .nodes
+                    .last()
+                    .map_or(&location, |node| &node.location())
+            }));
+
+        AstNode::IfExpression {
+            then_branch,
+            else_branch,
+            location,
+        }
+    }
+
+    fn parse_node(&mut self) -> AstNode {
+        let token = self.advance();
 
         match token {
-            Some(token) => {
-                let location = &token.location;
-
-                match &token.kind {
-                    TokenKind::Integer(i) => AstNode::IntegerLiteral(*i, location.clone()),
-                    TokenKind::Float(f) => AstNode::FloatLiteral(*f, location.clone()),
-                    TokenKind::String(s) => AstNode::StringLiteral(s.to_string(), location.clone()),
-                    TokenKind::True => AstNode::BooleanLiteral(true, location.clone()),
-                    TokenKind::False => AstNode::BooleanLiteral(false, location.clone()),
-                    TokenKind::Identifier(s) => {
-                        AstNode::Identifier(s.to_string(), location.clone())
-                    }
-                    TokenKind::Plus
-                    | TokenKind::Minus
-                    | TokenKind::Star
-                    | TokenKind::Slash
-                    | TokenKind::Equal
-                    | TokenKind::Bang
-                    | TokenKind::Not
-                    | TokenKind::Greater
-                    | TokenKind::GreaterEqual
-                    | TokenKind::Less
-                    | TokenKind::LessEqual
-                    | TokenKind::And
-                    | TokenKind::Or
-                    | TokenKind::EqualEqual
-                    | TokenKind::BangEqual => {
-                        let name = self.get_function_name(&token.kind);
-
-                        match name {
-                            None => panic!("Invalid operator"),
-                            Some(name) => AstNode::FunctionCall {
-                                name,
-                                location: location.clone(),
-                            },
-                        }
-                    }
-                    TokenKind::If => self.parse_if_expression(),
-                    TokenKind::Fun => self.parse_function_definition(),
-                    TokenKind::Call => self.parse_function_call(),
-                    TokenKind::While => self.parse_while_expression(),
-                    TokenKind::EOF => AstNode::FunctionCall {
-                        name: "()__quit".to_string(),
-                        location: location.clone(),
-                    },
-                    _ => todo!("parse_expression not implemented for {:?} yet", token),
+            None => panic!("Unexpected end of file"),
+            Some(token) => match &token.kind {
+                TokenKind::Integer(i) => AstNode::IntegerLiteral(*i, token.location.clone()),
+                TokenKind::Float(f) => AstNode::FloatLiteral(*f, token.location.clone()),
+                TokenKind::String(s) => {
+                    AstNode::StringLiteral(s.to_string(), token.location.clone())
                 }
-            }
-            None => {
-                // TODO: error handling that does not panic
-                panic!("Expected expression, got EOF");
-            }
+                TokenKind::True => AstNode::BooleanLiteral(true, token.location.clone()),
+                TokenKind::False => AstNode::BooleanLiteral(false, token.location.clone()),
+                TokenKind::Identifier(s) => {
+                    AstNode::Identifier(s.to_string(), token.location.clone())
+                }
+                TokenKind::Plus
+                | TokenKind::Minus
+                | TokenKind::Star
+                | TokenKind::Slash
+                | TokenKind::Percent
+                | TokenKind::Less
+                | TokenKind::LessEqual
+                | TokenKind::Greater
+                | TokenKind::GreaterEqual
+                | TokenKind::EqualEqual
+                | TokenKind::BangEqual
+                | TokenKind::And
+                | TokenKind::Or
+                | TokenKind::Not
+                | TokenKind::Bang => self.parse_operator(),
+                TokenKind::Fun => self.parse_function_definition(),
+                TokenKind::While => self.parse_while_expression(),
+                TokenKind::If => self.parse_if_expression(),
+                _ => todo!("parse_node is not implemented for {:?} yet", token.kind),
+            },
         }
     }
 
     pub fn parse(&mut self) -> Vec<AstNode> {
-        let mut nodes = Vec::new();
+        let mut ast = Vec::new();
 
         while !self.is_at_end() {
-            if self.is_at_end() {
-                break;
-            }
-
-            nodes.push(self.parse_expression());
+            let node = self.parse_node();
+            ast.push(node);
         }
 
-        nodes
+        ast
     }
 }

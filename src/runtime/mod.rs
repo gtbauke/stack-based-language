@@ -419,11 +419,16 @@ impl Interpreter {
                 },
                 Instruction::Print => {
                     let value = match self.stack.pop() {
-                        Some(value) => value,
+                        Some(value) => match value {
+                            Value::String(Str { string_index, .. }) => {
+                                Value::RawString(self.program.strings[string_index].clone())
+                            }
+                            _ => value,
+                        },
                         None => return Err(RuntimeError::StackUnderflow),
                     };
 
-                    println!("{}", value);
+                    print!("{}", value);
                     self.ip += 1;
                 }
                 _ => todo!("Instruction not implemented: {:?}", instruction),
