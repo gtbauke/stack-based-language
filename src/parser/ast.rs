@@ -5,6 +5,12 @@ pub struct Block {
     pub nodes: Vec<AstNode>,
 }
 
+impl Block {
+    pub fn new(nodes: Vec<AstNode>) -> Block {
+        Block { nodes }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum AstNode {
     IntegerLiteral(i64, Location),
@@ -21,6 +27,12 @@ pub enum AstNode {
     IfExpression {
         then_branch: Block,
         else_branch: Option<Block>,
+        location: Location,
+    },
+
+    WhileExpression {
+        condition: Block,
+        body: Block,
         location: Location,
     },
 
@@ -46,6 +58,7 @@ impl AstNode {
             AstNode::Identifier(_, location) => location,
             AstNode::FunctionCall { location, .. } => location,
             AstNode::IfExpression { location, .. } => location,
+            AstNode::WhileExpression { location, .. } => location,
             AstNode::FunctionDeclaration { location, .. } => location,
             AstNode::LetDeclaration { location, .. } => location,
         }

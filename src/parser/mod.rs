@@ -221,6 +221,43 @@ impl Parser {
         AstNode::FunctionCall { name, location }
     }
 
+    fn parse_while_expression(&mut self) -> AstNode {
+        let location = self.peek(0).unwrap().location.clone();
+        self.advance();
+
+        let mut condition = Vec::new();
+
+        loop {
+            let token = self.peek(0);
+
+            match token {
+                None => {
+                    panic!("Unexpected end of file");
+                }
+                Some(token) => match token.kind {
+                    TokenKind::Do => break,
+                    _ => {
+                        condition.push(self.parse_expression());
+                        self.advance();
+                    }
+                },
+            }
+        }
+
+        self.consume(TokenKind::Do);
+
+        let body = self.parse_block();
+
+        let location =
+            location.combine(body.nodes.last().map_or(&location, |node| node.location()));
+
+        AstNode::WhileExpression {
+            condition: Block::new(condition),
+            body,
+            location,
+        }
+    }
+
     fn parse_expression(&mut self) -> AstNode {
         let token = self.peek(0);
 
@@ -265,6 +302,7 @@ impl Parser {
                     TokenKind::If => self.parse_if_expression(),
                     TokenKind::Fun => self.parse_function_definition(),
                     TokenKind::Call => self.parse_function_call(),
+                    TokenKind::While => self.parse_while_expression(),
                     TokenKind::EOF => AstNode::FunctionCall {
                         name: "()__quit".to_string(),
                         location: location.clone(),

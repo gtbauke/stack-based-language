@@ -48,6 +48,7 @@ pub enum TokenKind {
     True,
     False,
     Call,
+    Do,
 
     Identifier(String),
     String(String),

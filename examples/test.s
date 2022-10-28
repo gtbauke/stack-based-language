@@ -1,3 +1,6 @@
 fun main in
-  12 12 * -13 7 13 * 5 - + /
+  0 while dup 10 < do
+    print
+    1 +
+  end
 end

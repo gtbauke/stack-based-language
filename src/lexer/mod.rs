@@ -147,6 +147,7 @@ impl Lexer {
             "true" => TokenKind::True,
             "false" => TokenKind::False,
             "call" => TokenKind::Call,
+            "do" => TokenKind::Do,
             _ => TokenKind::Identifier(lexeme.to_string()),
         };
 
