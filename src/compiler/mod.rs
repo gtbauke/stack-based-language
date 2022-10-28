@@ -187,12 +187,16 @@ impl Compiler {
                     "drop" => self.current_block().add_instruction(Instruction::Drop),
                     "print" => self.current_block().add_instruction(Instruction::Print),
                     _ => {
-                        println!("Identifier found: {}", name);
+                        if self.program.functions.contains_key(name) {
+                            let index = self.program.functions[name];
 
-                        todo!(
-                            "compile_node::AstNode::Identifier is not implemented for {} yet",
-                            name
-                        )
+                            self.current_block()
+                                .add_instruction(Instruction::Call(index));
+
+                            return Ok(());
+                        }
+
+                        todo!("compile_node::AstNode::Identifier not yet implemented for non function identifiers `{}`", name);
                     }
                 };
             }

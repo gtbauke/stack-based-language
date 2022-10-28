@@ -246,6 +246,16 @@ impl Parser {
         }
     }
 
+    fn parse_function_call(&mut self) -> AstNode {
+        let location = self.previous_location();
+        let name = match self.consume_identifier() {
+            Some(lexeme) => lexeme,
+            None => panic!("Unable to get function name"),
+        };
+
+        AstNode::FunctionCall { name, location }
+    }
+
     fn parse_node(&mut self) -> AstNode {
         let token = self.advance();
 
@@ -280,6 +290,7 @@ impl Parser {
                 TokenKind::Fun => self.parse_function_definition(),
                 TokenKind::While => self.parse_while_expression(),
                 TokenKind::If => self.parse_if_expression(),
+                TokenKind::Call => self.parse_function_call(),
                 _ => todo!("parse_node is not implemented for {:?} yet", token.kind),
             },
         }

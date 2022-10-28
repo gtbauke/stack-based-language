@@ -29,9 +29,13 @@ fn main() {
     let ast = parser.parse();
 
     let mut resolver = Resolver::new();
-    let program = resolver
-        .resolve(ast.clone())
-        .expect("Unable to resolve program");
+    let program = match resolver.resolve(ast.clone()) {
+        Ok(program) => program,
+        Err(error) => {
+            println!("{}", error);
+            return;
+        }
+    };
 
     let mut compiler = Compiler::new(program);
     let program = compiler.compile(ast).expect("Unable to compile program");

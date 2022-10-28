@@ -28,6 +28,13 @@ impl Resolver {
 
                 Ok(())
             }
+            AstNode::FunctionCall { name, location } => {
+                if name == "main" {
+                    return Err(ResolverError::CallToMain(location.clone()));
+                }
+
+                Ok(())
+            }
             _ => Ok(()),
         }
     }
