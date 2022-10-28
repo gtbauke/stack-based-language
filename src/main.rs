@@ -23,6 +23,8 @@ fn main() {
     let mut lexer = Lexer::new(&source);
     let tokens = lexer.lex();
 
+    // println!("{:#?}", &tokens);
+
     let mut parser = Parser::new(tokens);
     let ast = parser.parse();
 

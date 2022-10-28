@@ -6,6 +6,7 @@ use self::ast::{AstNode, Block};
 
 pub mod ast;
 
+// TODO: rewrite parser because there is an error when multiple blocks follow each other that I cannot find
 #[derive(Debug)]
 pub struct Parser {
     tokens: Vec<Token>,
@@ -52,11 +53,8 @@ impl Parser {
     }
 
     fn consume(&mut self, expected: TokenKind) -> Option<&Token> {
-        match self.tokens.get(self.current) {
-            Some(token) if token.kind == expected => {
-                self.current += 1;
-                Some(token)
-            }
+        match self.peek(0) {
+            Some(token) if token.kind == expected => self.advance(),
             _ => None,
         }
     }
@@ -93,6 +91,7 @@ impl Parser {
 
         loop {
             let token = self.peek(0);
+            // println!("parse_block: {:?}", &token);
 
             match token {
                 None => {
@@ -103,13 +102,27 @@ impl Parser {
                     TokenKind::End => break,
                     _ => {
                         nodes.push(self.parse_expression());
+
+                        // println!("parse_block_advance<before>: {:?}", &self.peek(0));
                         self.advance();
+                        // println!("parse_block_advance<after>: {:?}", &self.peek(0));
                     }
                 },
             }
         }
 
         self.consume(TokenKind::End);
+
+        println!(
+            "{:#?}",
+            self.tokens
+                .clone()
+                .iter()
+                .skip(self.current)
+                .collect::<Vec<&Token>>()
+        );
+
+        println!("Current token index: {}", self.current);
 
         Block { nodes }
     }
@@ -128,7 +141,17 @@ impl Parser {
 
         self.consume(TokenKind::In);
 
+        println!(
+            "------------- parse_function_definition {} -------------",
+            name
+        );
+
         let body = self.parse_block();
+        self.current = self.current - 2;
+
+        println!("Current token index: {}", self.current);
+        println!("--------------------------------------------------------");
+
         let location =
             location.combine(body.nodes.last().map_or(&location, |node| node.location()));
 
@@ -222,6 +245,7 @@ impl Parser {
     }
 
     fn parse_while_expression(&mut self) -> AstNode {
+        println!("-------------- parse_while_expression --------------");
         let location = self.peek(0).unwrap().location.clone();
         self.advance();
 
@@ -251,6 +275,7 @@ impl Parser {
         let location =
             location.combine(body.nodes.last().map_or(&location, |node| node.location()));
 
+        println!("----------------------------------------------------");
         AstNode::WhileExpression {
             condition: Block::new(condition),
             body,
@@ -260,6 +285,7 @@ impl Parser {
 
     fn parse_expression(&mut self) -> AstNode {
         let token = self.peek(0);
+        println!("parse_expression: {:?}", token);
 
         match token {
             Some(token) => {

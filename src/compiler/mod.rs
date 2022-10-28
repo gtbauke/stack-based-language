@@ -186,10 +186,14 @@ impl Compiler {
                     "dup" => self.current_block().add_instruction(Instruction::Dup),
                     "drop" => self.current_block().add_instruction(Instruction::Drop),
                     "print" => self.current_block().add_instruction(Instruction::Print),
-                    _ => todo!(
-                        "compile_node::AstNode::Identifier is not implemented for {} yet",
-                        name
-                    ),
+                    _ => {
+                        println!("Identifier found: {}", name);
+
+                        todo!(
+                            "compile_node::AstNode::Identifier is not implemented for {} yet",
+                            name
+                        )
+                    }
                 };
             }
             _ => todo!("compile_node is not implemented for {:?} yet", node),

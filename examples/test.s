@@ -4,4 +4,6 @@ fun main in
     print
     1 +
   end
+
+  stack
 end

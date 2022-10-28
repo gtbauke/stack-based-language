@@ -402,6 +402,30 @@ impl Interpreter {
                     self.bp = self.brp;
                     self.ip = self.irp;
                 }
+                Instruction::Dup => {
+                    let value = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    self.stack.push(value.clone());
+                    self.stack.push(value);
+
+                    self.ip += 1;
+                }
+                Instruction::Drop => match self.stack.pop() {
+                    Some(_) => self.ip += 1,
+                    None => return Err(RuntimeError::StackUnderflow),
+                },
+                Instruction::Print => {
+                    let value = match self.stack.pop() {
+                        Some(value) => value,
+                        None => return Err(RuntimeError::StackUnderflow),
+                    };
+
+                    println!("{}", value);
+                    self.ip += 1;
+                }
                 _ => todo!("Instruction not implemented: {:?}", instruction),
             }
         }
